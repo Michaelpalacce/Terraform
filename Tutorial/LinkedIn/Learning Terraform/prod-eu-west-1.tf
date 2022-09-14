@@ -79,35 +79,53 @@ resource "aws_security_group" "prod_web" {
 # Following AMI is a bitnami packaged nginx
 # ami-0db1d473d1fdc1dfc
 
-resource "aws_instance" "prod_web" {
-  count         = 2
-
-  ami           = "ami-0db1d473d1fdc1dfc"
-  instance_type = "t2.nano"
-
-  vpc_security_group_ids = [
-    aws_security_group.prod_web.id
-  ]
+resource "aws_launch_template" "prod_web" {
+  name_prefix   = "prod_web"
+  image_id      = "ami-0db1d473d1fdc1dfc"
+  instance_type = "t2.micro"
 
   tags = {
     Terraform: "true"
   }
+}
+
+resource "aws_autoscaling_group" "prod_web" {
+  min_size            = 1
+  max_size            = 2
+  vpc_zone_identifier = [aws_default_subnet.default_azb.id, aws_default_subnet.default_azb.id]
+
+  launch_template {
+    id      = aws_launch_template.prod_web.id
+    version = "$Latest"
+  }
+
+  tag {
+    key                 = "Terraform"
+    propagate_at_launch = true
+    value               = "true"
+  }
+}
+
+resource "aws_autoscaling_attachment" "prod_web" {
+  autoscaling_group_name  = aws_autoscaling_group.prod_web.id
+
+  elb                     = aws_elb.prod_web.id
 }
 
 ############ INSTANCES #########
 
 ############ EIP ###############
 # Decoupled in the case you would like to remove a eip from an instance
-resource "aws_eip_association" "prod_web" {
-  instance_id = aws_instance.prod_web.0.id
-  allocation_id = aws_eip.prod_web.id
-}
-
-resource "aws_eip" "prod_web" {
-  tags = {
-    Terraform: "true"
-  }
-}
+#resource "aws_eip_association" "prod_web" {
+#  instance_id = aws_instance.prod_web.0.id
+#  allocation_id = aws_eip.prod_web.id
+#}
+#
+#resource "aws_eip" "prod_web" {
+#  tags = {
+#    Terraform: "true"
+#  }
+#}
 
 ############ EIP ###############
 
@@ -115,10 +133,8 @@ resource "aws_eip" "prod_web" {
 
 resource "aws_elb" "prod_web" {
   name            = "prod-web"
-  instances       = aws_instance.prod_web.*.id
 
   subnets         = [aws_default_subnet.default_aza.id, aws_default_subnet.default_azb.id]
-
   security_groups = [aws_security_group.prod_web.id]
 
   listener {
