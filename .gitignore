@@ -1,6 +1,6 @@
 ### Terraform template
 # Local .terraform directories
-**/.terraform/*
+Tutorial/LinkedIn/Learning Terraform/.terraform/*
 
 # .tfstate files
 *.tfstate
