@@ -5,6 +5,10 @@ provider "aws" {
 ############ S3 #################
 resource "aws_s3_bucket" "prod_sgenov_bucket" {
   bucket = "sgenov-terraform"
+
+  tags = {
+    Terraform: "true"
+  }
 }
 
 resource "aws_s3_bucket_acl" "prod_sgenov_bucket_acl" {
@@ -17,6 +21,22 @@ resource "aws_s3_bucket_acl" "prod_sgenov_bucket_acl" {
 ############ VPC ################
 
 resource "aws_default_vpc" "default" {}
+
+resource "aws_default_subnet" "default_aza" {
+  availability_zone = "eu-west-1a"
+
+  tags = {
+    Terraform: "true"
+  }
+}
+
+resource "aws_default_subnet" "default_azb" {
+  availability_zone = "eu-west-1b"
+
+  tags = {
+    Terraform: "true"
+  }
+}
 
 ############ VPC ################
 
@@ -91,6 +111,33 @@ resource "aws_eip" "prod_web" {
 
 ############ EIP ###############
 
-############ EIP ###############
+############ ELB ###############
 
-############ EIP ###############
+resource "aws_elb" "prod_web" {
+  name            = "prod-web"
+  instances       = aws_instance.prod_web.*.id
+
+  subnets         = [aws_default_subnet.default_aza.id, aws_default_subnet.default_azb.id]
+
+  security_groups = [aws_security_group.prod_web.id]
+
+  listener {
+    instance_port     = 80
+    instance_protocol = "http"
+    lb_port           = 80
+    lb_protocol       = "http"
+  }
+
+#  listener {
+#    instance_port     = 443
+#    instance_protocol = "https"
+#    lb_port           = 443
+#    lb_protocol       = "https"
+#  }
+
+  tags = {
+    Terraform: "true"
+  }
+}
+
+############ ELB ###############
